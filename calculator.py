@@ -37,21 +37,51 @@ To submit your homework:
     that explains how to perform calculations.
   * Commit and push your changes to your fork.
   * Submit a link to your Session03 fork repository!
-
-
 """
+import traceback
 
+
+def home():
+    body = ['<h1>How to use this Calculator</h1>',
+        '<br>Enter your &ltoperator&gt and numbers (&ltA&gt and &ltB&gt) as indicated:',
+        '<br>http://localhost:8080/&ltoperator&gt/&ltA&gt/&ltB&gt',
+        '<br>',
+        '<br>Here is the list of operators you may use:',
+        '<li>add: A + B</li>',
+        '<li>subtract: A - B</li>',
+        '<li>multiply: A * B</li>',
+        '<li>divide: A / B</li>',]
+
+    return '\n'.join(body)
 
 def add(*args):
     """ Returns a STRING with the sum of the arguments """
 
     # TODO: Fill sum with the correct value, based on the
     # args provided.
-    sum = "0"
+    sum = int(args[0]) + int(args[1])
 
-    return sum
+    return str(sum)
 
 # TODO: Add functions for handling more arithmetic operations.
+
+def subtract(*args):
+    diff = int(args[0]) - int(args[1])
+
+    return str(diff)
+
+def multiply(*args):
+    prod = int(args[0]) - int(args[1])
+
+    return str(prod)
+
+def divide(*args):
+    try:
+        div = int(args[0]) / int(args[1])
+        return str(div) 
+
+    except ZeroDivisionError:
+        return 'You cannot divide by zero.'
 
 def resolve_path(path):
     """
@@ -63,8 +93,23 @@ def resolve_path(path):
     # examples provide the correct *syntax*, but you should
     # determine the actual values of func and args using the
     # path.
-    func = add
-    args = ['25', '32']
+    funcs = {
+        '': home,
+        'add': add,
+        'subtract': subtract,
+        'multiply': multiply,
+        'divide': divide,
+    }
+
+    path = path.strip('/').split('/')
+    
+    func_name = path[0]
+    args = path[1:]
+
+    try:
+        func = funcs[func_name]
+    except KeyError:
+        raise NameError 
 
     return func, args
 
@@ -73,12 +118,35 @@ def application(environ, start_response):
     # work here as well! Remember that your application must
     # invoke start_response(status, headers) and also return
     # the body of the response in BYTE encoding.
-    #
-    # TODO (bonus): Add error handling for a user attempting
-    # to divide by zero.
-    pass
+    
+    headers = [('Content-type', 'text/html')]
+    try:
+        path = environ.get('PATH_INFO', None)
+        if path is None:
+            raise NameError
+
+        func, args = resolve_path(path)
+        body = func(*args)
+
+        status = "200 OK"
+    except NameError:
+        status = "404 Not Found"
+        body = "<h1>Page Not Found</h1>"
+    except Exception:
+        status = "500 Internal Server Error"
+        body = "<h1>Internal Server Error</h1>"
+
+        print(traceback.format_exc())
+    finally:
+        headers.append(('Content-length', str(len(body))))
+        start_response(status, headers)
+
+        return [body.encode('utf8')]
 
 if __name__ == '__main__':
     # TODO: Insert the same boilerplate wsgiref simple
     # server creation that you used in the book database.
-    pass
+
+    from wsgiref.simple_server import make_server
+    server = make_server('localhost', 8080, application)
+    server.serve_forever()
